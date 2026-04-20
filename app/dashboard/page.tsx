@@ -71,10 +71,12 @@ export default function DashboardPage() {
   };
 
   const handleSearch = async (query: string) => {
+    const createdAt = new Date().toISOString();
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
       text: query,
+      createdAt,
     };
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
@@ -112,6 +114,7 @@ export default function DashboardPage() {
             id: (Date.now() + 1).toString(),
             role: "assistant",
             text: data.error || "Napaka pri iskanju.",
+            createdAt: new Date().toISOString(),
           },
         ]);
         return;
@@ -140,6 +143,7 @@ export default function DashboardPage() {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           text: data.aiMessage,
+          createdAt: new Date().toISOString(),
           restaurants: data.restaurants,
         },
       ]);
@@ -152,6 +156,7 @@ export default function DashboardPage() {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           text: "Napaka pri iskanju. Poskusi znova.",
+          createdAt: new Date().toISOString(),
         },
       ]);
     } finally {
@@ -189,6 +194,7 @@ export default function DashboardPage() {
           onSelect={setSelectedId}
           searchLocation={searchLocation}
           onUpdateLocation={setSearchLocation}
+          isLoggedIn={true}
           onProfile={() => router.push("/profile")}
           onLogout={handleLogout}
         />
