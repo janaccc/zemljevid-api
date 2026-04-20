@@ -35,6 +35,7 @@ type Props = {
   onSelect: (id: string) => void;
   searchLocation: SearchLocation;
   onUpdateLocation: (location: SearchLocation) => void;
+  isLoggedIn?: boolean;
   onProfile?: () => void;
   onLogout?: () => void;
 };
@@ -96,10 +97,12 @@ export default function ChatPanel({
   onSelect,
   searchLocation,
   onUpdateLocation,
+  isLoggedIn = false,
   onProfile,
   onLogout,
 }: Props) {
   const [input, setInput] = useState("");
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
   const [showLocationSettings, setShowLocationSettings] = useState(false);
   const [locationInput, setLocationInput] = useState(
     searchLocation.mode === "manual" ? searchLocation.locationQuery : "Ljubljana"
@@ -110,6 +113,27 @@ export default function ChatPanel({
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const searchHistory = messages.filter((message) => message.role === "user");
+
+  const formatHistoryTime = (message: Message) => {
+    const timestamp =
+      message.createdAt ??
+      (Number.isFinite(Number(message.id))
+        ? new Date(Number(message.id)).toISOString()
+        : undefined);
+
+    if (!timestamp) return "";
+
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return "";
+
+    return new Intl.DateTimeFormat("sl-SI", {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+    }).format(date);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -173,6 +197,15 @@ export default function ChatPanel({
     if (!q || loading) return;
     setInput("");
     onSearch(q);
+  };
+
+  const handleProfileClick = () => {
+    if (!isLoggedIn) {
+      onProfile?.();
+      return;
+    }
+
+    setShowSearchHistory((current) => !current);
   };
 
   const handleSaveManualLocation = async () => {
@@ -242,13 +275,40 @@ export default function ChatPanel({
   return (
     <div className="chatPanel">
       <div className="chatActionRow top">
-        <button type="button" className="chatActionBtn" onClick={onProfile}>
+        <button type="button" className="chatActionBtn" onClick={handleProfileClick}>
           Moj profil
         </button>
         <button type="button" className="chatActionBtn danger" onClick={onLogout}>
           Odjava
         </button>
       </div>
+
+      {isLoggedIn && showSearchHistory && (
+        <div className="searchHistoryPanel">
+          <div className="searchHistoryHeader">
+            <h2>Zgodovina iskanj</h2>
+          </div>
+          {searchHistory.length === 0 ? (
+            <p className="searchHistoryEmpty">
+              Tvoja iskanja se bodo prikazala tukaj.
+            </p>
+          ) : (
+            <div className="searchHistoryList">
+              {searchHistory
+                .slice()
+                .reverse()
+                .map((message) => (
+                  <div key={message.id} className="searchHistoryItem">
+                    <div className="searchHistoryText">{message.text}</div>
+                    <div className="searchHistoryTime">
+                      {formatHistoryTime(message)}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="chatHeader">
         <h1>AI Food Finder</h1>

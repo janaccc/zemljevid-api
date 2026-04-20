@@ -457,6 +457,52 @@ input {
   border-color: rgba(239, 68, 68, 0.65);
 }
 
+.searchHistoryPanel {
+  margin: 0 16px 8px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  flex-shrink: 0;
+}
+
+.searchHistoryHeader h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.searchHistoryEmpty {
+  margin: 0;
+  opacity: 0.7;
+  font-size: 13px;
+}
+
+.searchHistoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.searchHistoryItem {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.searchHistoryText {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.searchHistoryTime {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
 .chatInputRow {
   display: flex;
   gap: 10px;
