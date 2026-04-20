@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import type { ParsedIntent, Restaurant } from "@/lib/types";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const GEMINI_MODEL = "gemini-2.0-flash";
@@ -696,6 +698,12 @@ export async function POST(req: Request) {
       ranked,
       usingLocation
     );
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    await createAdminClient()
+      .from("searches")
+      .insert({ query, result_count: ranked.length, user_id: user?.id ?? null });
 
     return NextResponse.json({
       query,
