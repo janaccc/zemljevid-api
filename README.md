@@ -1,20 +1,43 @@
-<b>EstateHub</b>
+# AI Food Finder (Next.js)
 
-EstateHub je spletna aplikacija za oglaševanje in iskanje nepremičnin.  
-Omogoča lastnikom, da enostavno objavijo svoje nepremičnine, kupcem pa, da jih najdejo in pošljejo ponudbe.
+Chat + mapa za iskanje restavracij. V chatu vprasas (tudi z vec filtri, locenimi z vejico), aplikacija pa vrne zadetke in jih oznaci na mapi.
 
----
+## Kaj zna
 
-## Funkcionalnosti
+- Iskanje restavracij prek Google Places (Text Search)
+- Klik na rezultat -> fokus marker + info okno na mapi
+- Nastavitev kraja in radija (5-100 km) + predlogi krajev med tipkanjem
+- Filtri, loceni z vejico (npr. `pica, pod 5 eur, center`)
+- Opcijsko: Gemini za parsing namena in lepse besedilo odgovora
 
-### Za lastnike nepremičnin
-- **Registracija in prijava** – ustvarite svoj račun za dostop do vseh funkcionalnosti.  
-- **Objava nepremičnin** – dodajte slike, lokacijo in osnovne podatke o nepremičnini.  
-- **Urejanje nepremičnin** – posodabljajte ali brišite objave po potrebi.  
+## Zagon
 
-### Za kupce
-- **Registracija in prijava** – ustvarite račun za iskanje in komunikacijo z lastniki.  
-- **Pošiljanje ponudb** – kontaktirajte lastnike in pošljite ponudbo za izbrano nepremičnino.  
-- **Iskalni filtri** – filtrirajte nepremičnine po lokaciji, ceni, tipu in drugih kriterijih.  
+```bash
+npm install
+npm run dev
+```
 
----
+Odpri `http://localhost:3000`.
+
+## Okoljske spremenljivke
+
+Ustvari `.env.local`:
+
+```env
+# Server-side (API rute)
+GOOGLE_MAPS_API_KEY=...
+GEMINI_API_KEY=...               # opcijsko
+
+# Client-side (Google Maps JS script v brskalniku)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...
+NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=...  # opcijsko (Advanced Markers)
+```
+
+Opomba: kljucev ne commitaj v git.
+
+## API rute
+
+- `POST /api/search` (body: `query`, `lat/lng` ali `locationQuery`, `radiusKm`)
+- `GET /api/location-suggest?q=...` (predlogi krajev)
+- `GET /api/geocode?q=...` (pretvorba kraja v lat/lng)
+
