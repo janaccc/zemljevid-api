@@ -35,6 +35,8 @@ type Props = {
   onSelect: (id: string) => void;
   searchLocation: SearchLocation;
   onUpdateLocation: (location: SearchLocation) => void;
+  onProfile?: () => void;
+  onLogout?: () => void;
 };
 
 function priceLabel(value: string | null) {
@@ -94,6 +96,8 @@ export default function ChatPanel({
   onSelect,
   searchLocation,
   onUpdateLocation,
+  onProfile,
+  onLogout,
 }: Props) {
   const [input, setInput] = useState("");
   const [showLocationSettings, setShowLocationSettings] = useState(false);
@@ -238,10 +242,10 @@ export default function ChatPanel({
   return (
     <div className="chatPanel">
       <div className="chatActionRow top">
-        <button type="button" className="chatActionBtn" onClick={() => {}}>
+        <button type="button" className="chatActionBtn" onClick={onProfile}>
           Moj profil
         </button>
-        <button type="button" className="chatActionBtn danger" onClick={() => {}}>
+        <button type="button" className="chatActionBtn danger" onClick={onLogout}>
           Odjava
         </button>
       </div>

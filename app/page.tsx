@@ -1,167 +1,121 @@
-"use client";
+import Link from "next/link";
 
-import { useState, useEffect } from "react";
-import RestaurantMap from "@/components/RestaurantMap";
-import ChatPanel from "@/components/ChatPanel";
-import type { Restaurant, Message } from "@/lib/types";
-
-type SearchLocation =
-  | {
-      mode: "default";
-      label: string;
-      radiusKm: number;
-      lat?: number;
-      lng?: number;
-    }
-  | {
-      mode: "auto";
-      label: string;
-      radiusKm: number;
-      lat: number;
-      lng: number;
-    }
-  | {
-      mode: "manual";
-      label: string;
-      radiusKm: number;
-      locationQuery: string;
-      lat?: number;
-      lng?: number;
-    };
-
-export default function HomePage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [searchLocation, setSearchLocation] = useState<SearchLocation>({
-    mode: "default",
-    label: "Ljubljana (privzeto)",
-    radiusKm: 15,
-  });
-
-  useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) =>
-        setSearchLocation((current) =>
-          current.mode === "manual"
-            ? current
-            : {
-                mode: "auto",
-                label: "Tvoja lokacija",
-                radiusKm: current.radiusKm,
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-              }
-        ),
-      () => {}
-    );
-  }, []);
-
-  const handleSearch = async (query: string) => {
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      text: query,
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          lat:
-            searchLocation.mode === "auto" ||
-            (searchLocation.mode === "manual" && typeof searchLocation.lat === "number")
-              ? searchLocation.lat
-              : undefined,
-          lng:
-            searchLocation.mode === "auto" ||
-            (searchLocation.mode === "manual" && typeof searchLocation.lng === "number")
-              ? searchLocation.lng
-              : undefined,
-          locationQuery:
-            searchLocation.mode === "manual"
-              ? searchLocation.locationQuery
-              : undefined,
-          radiusKm: searchLocation.radiusKm,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            text: data.error || "Napaka pri iskanju.",
-          },
-        ]);
-        return;
-      }
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          text: data.aiMessage,
-          restaurants: data.restaurants,
-        },
-      ]);
-      setRestaurants(data.restaurants || []);
-      setSelectedId(data.selectedId || null);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          text: "Napaka pri iskanju. Poskusi znova.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+export default function WelcomePage() {
   return (
-    <main className="page">
-      <section className="left">
-        <RestaurantMap
-          restaurants={restaurants}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          mapFocus={
-            typeof searchLocation.lat === "number" &&
-            typeof searchLocation.lng === "number"
-              ? {
-                  lat: searchLocation.lat,
-                  lng: searchLocation.lng,
-                  label: searchLocation.label,
-                  radiusKm: searchLocation.radiusKm,
-                }
-              : null
-          }
-        />
-      </section>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#0b1020",
+        padding: "24px",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "440px",
+          background: "#121a30",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "24px",
+          padding: "48px 40px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "0",
+        }}
+      >
+        <div
+          style={{
+            width: "64px",
+            height: "64px",
+            borderRadius: "18px",
+            background: "linear-gradient(135deg, #4f7cff, #1d4ed8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "30px",
+            marginBottom: "24px",
+          }}
+        >
+          🍽️
+        </div>
 
-      <section className="right">
-        <ChatPanel
-          messages={messages}
-          loading={loading}
-          onSearch={handleSearch}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          searchLocation={searchLocation}
-          onUpdateLocation={setSearchLocation}
-        />
-      </section>
+        <h1
+          style={{
+            margin: "0 0 10px",
+            fontSize: "28px",
+            fontWeight: 800,
+            color: "white",
+            textAlign: "center",
+          }}
+        >
+          AI Food Finder
+        </h1>
+
+        <p
+          style={{
+            margin: "0 0 40px",
+            fontSize: "15px",
+            color: "rgba(255,255,255,0.55)",
+            textAlign: "center",
+            lineHeight: 1.6,
+          }}
+        >
+          Najdi najboljše restavracije z AI + Google Maps.
+          <br />
+          Prijavi se za nadaljevanje.
+        </p>
+
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          <Link
+            href="/auth/login"
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "14px",
+              borderRadius: "12px",
+              background: "#4f7cff",
+              color: "white",
+              fontWeight: 700,
+              fontSize: "16px",
+              textAlign: "center",
+              textDecoration: "none",
+              boxSizing: "border-box",
+            }}
+          >
+            Prijava
+          </Link>
+
+          <Link
+            href="/auth/register"
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "14px",
+              borderRadius: "12px",
+              background: "transparent",
+              color: "white",
+              fontWeight: 600,
+              fontSize: "16px",
+              textAlign: "center",
+              textDecoration: "none",
+              border: "1px solid rgba(255,255,255,0.15)",
+              boxSizing: "border-box",
+            }}
+          >
+            Registracija
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }
