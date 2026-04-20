@@ -8,7 +8,6 @@ Chat + mapa za iskanje restavracij. V chatu vprasas (tudi z vec filtri, locenimi
 - Klik na rezultat -> fokus marker + info okno na mapi
 - Nastavitev kraja in radija (5-100 km) + predlogi krajev med tipkanjem
 - Filtri, loceni z vejico (npr. `pica, pod 5 eur, center`)
-- Opcijsko: Gemini za parsing namena in lepse besedilo odgovora
 
 ## Zagon
 
