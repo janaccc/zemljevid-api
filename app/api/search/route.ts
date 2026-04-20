@@ -10,19 +10,27 @@ const STOP_WORDS = new Set([
   "ali",
   "bi",
   "blizu",
+  "ce",
+  "da",
   "da",
   "danes",
+  "dejansko",
   "do",
   "dostava",
   "eur",
   "euro",
   "evra",
   "evrov",
+  "ful",
   "hrana",
   "hocem",
   "hoce",
+  "hocem",
+  "hocem",
+  "hočem",
   "i",
   "in",
+  "jaz",
   "jaz",
   "kaj",
   "kje",
@@ -31,15 +39,22 @@ const STOP_WORDS = new Set([
   "kosih",
   "lahko",
   "mi",
+  "mi",
+  "mogoce",
+  "mogoče",
   "na",
   "naj",
   "nekaj",
   "ne",
+  "no",
+  "pa",
+  "potem",
   "pod",
   "po",
   "pri",
   "rad",
   "rada",
+  "res",
   "restavracija",
   "restavracije",
   "s",
@@ -51,9 +66,16 @@ const STOP_WORDS = new Set([
   "v",
   "za",
   "zelo",
+  "ampak",
+  "jesti",
+  "jedel",
+  "jedla",
+  "jem",
+  "jejo",
 ]);
 
 const FOOD_ALIASES: Array<{ canonical: string; patterns: string[] }> = [
+  { canonical: "hot dog", patterns: ["hotdog", "hot dog", "hot-dog"] },
   { canonical: "pizza", patterns: ["pizza", "pica", "pizze"] },
   { canonical: "pizza slice", patterns: ["po kosih", "kos pice", "pizza slice"] },
   { canonical: "burger", patterns: ["burger", "hamburger"] },
@@ -149,6 +171,18 @@ function splitFilters(query: string) {
 
 function getPriceIntent(query: string): ParsedIntent["price"] {
   const normalized = normalizeText(query);
+
+  // "ne predrag" means user does not want expensive; treat as moderate by default.
+  if (
+    normalized.includes("ne predrag") ||
+    normalized.includes("ne predrago") ||
+    normalized.includes("predrag") ||
+    normalized.includes("predrago") ||
+    normalized.includes("ne drago")
+  ) {
+    return "moderate";
+  }
+
   const numericMatch = normalized.match(
     /(pod|do|manj kot)\s*(\d+(?:[.,]\d+)?)\s*(eur|euro|evra|evrov)?/
   );
@@ -195,6 +229,27 @@ function getFoodIntent(query: string) {
   for (const alias of FOOD_ALIASES) {
     if (alias.patterns.some((pattern) => normalized.includes(pattern))) {
       return alias.canonical;
+    }
+  }
+
+  // Try to extract the food after "jesti/jedel/jedla/jem" type phrasing.
+  const eatMatch =
+    normalized.match(/\b(?:rad\s+)?(?:bi\s+)?(?:jedel|jedla|jesti|jem)\s+([a-z0-9][a-z0-9\s-]{1,60})/i) ||
+    normalized.match(/\b(?:hocem|hoce[m]?|hočem)\s+(?:jesti|pojesti)\s+([a-z0-9][a-z0-9\s-]{1,60})/i);
+
+  if (eatMatch?.[1]) {
+    const candidate = eatMatch[1]
+      .replace(/\b(ampak|pa|prosim|pls|danes|jutri|ne|pod|do|manj|kot)\b/g, " ")
+      .trim();
+
+    const tokens = candidate
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter((token) => !STOP_WORDS.has(token))
+      .slice(0, 3);
+
+    if (tokens.length > 0) {
+      return tokens.join(" ");
     }
   }
 
