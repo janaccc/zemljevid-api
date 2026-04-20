@@ -594,6 +594,25 @@ async function geocodeLocation(locationQuery: string, apiKey: string) {
   };
 }
 
+async function saveSearchHistory(query: string, resultCount: number) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return;
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    await createAdminClient()
+      .from("searches")
+      .insert({ query, result_count: resultCount, user_id: user?.id ?? null });
+  } catch (error) {
+    console.error("Failed to save search history:", error);
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -698,12 +717,7 @@ export async function POST(req: Request) {
       ranked,
       usingLocation
     );
-
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    await createAdminClient()
-      .from("searches")
-      .insert({ query, result_count: ranked.length, user_id: user?.id ?? null });
+    await saveSearchHistory(query, ranked.length);
 
     return NextResponse.json({
       query,

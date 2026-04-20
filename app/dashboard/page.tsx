@@ -194,7 +194,6 @@ export default function DashboardPage() {
           onSelect={setSelectedId}
           searchLocation={searchLocation}
           onUpdateLocation={setSearchLocation}
-          isLoggedIn={true}
           onProfile={() => router.push("/profile")}
           onLogout={handleLogout}
         />
