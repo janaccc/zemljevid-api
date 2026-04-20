@@ -31,8 +31,12 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/profile"))) {
+  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/profile") || pathname.startsWith("/admin"))) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  if (pathname.startsWith("/admin") && user?.email !== process.env.ADMIN_EMAIL) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   if (user && (pathname === "/" || pathname.startsWith("/auth"))) {

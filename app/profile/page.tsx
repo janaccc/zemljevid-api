@@ -61,6 +61,7 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
+  const isAdmin = user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
   const joined = new Date(user.created_at).toLocaleDateString("sl-SI", {
     day: "numeric",
     month: "long",
@@ -138,8 +139,13 @@ export default function ProfilePage() {
             {user.email?.[0].toUpperCase()}
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: "18px", marginBottom: "4px" }}>
-              {user.email}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+              <span style={{ fontWeight: 700, fontSize: "18px" }}>{user.email}</span>
+              {isAdmin && (
+                <span style={{ padding: "2px 10px", borderRadius: "999px", background: "rgba(79,124,255,0.18)", color: "#4f7cff", fontSize: "12px", fontWeight: 700 }}>
+                  Admin
+                </span>
+              )}
             </div>
             <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)" }}>
               Član od {joined}
@@ -169,6 +175,47 @@ export default function ProfilePage() {
             />
           </div>
         </div>
+
+        {/* Admin sekcija */}
+        {isAdmin && (
+          <div
+            style={{
+              background: "rgba(79,124,255,0.06)",
+              border: "1px solid rgba(79,124,255,0.2)",
+              borderRadius: "20px",
+              padding: "24px 28px",
+              marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+            }}
+          >
+            <div>
+              <h2 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 700, color: "#4f7cff" }}>
+                Admin Panel
+              </h2>
+              <p style={{ margin: 0, fontSize: "13px", color: "rgba(255,255,255,0.45)" }}>
+                Upravljaj uporabnike in oglej si statistike
+              </p>
+            </div>
+            <Link
+              href="/admin"
+              style={{
+                padding: "10px 20px",
+                borderRadius: "12px",
+                background: "#4f7cff",
+                color: "white",
+                fontWeight: 700,
+                fontSize: "14px",
+                textDecoration: "none",
+                flexShrink: 0,
+              }}
+            >
+              Odpri →
+            </Link>
+          </div>
+        )}
 
         {/* Placeholder sekcija za prijatelja */}
         <div
