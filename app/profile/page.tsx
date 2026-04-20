@@ -6,9 +6,41 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
+const SEARCH_HISTORY_KEY = "search-history";
+
+type SearchHistoryEntry = {
+  prompt: string;
+  createdAt: string;
+};
+
+function readSearchHistory(): SearchHistoryEntry[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const storedHistory = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+    const parsedHistory = storedHistory ? JSON.parse(storedHistory) : [];
+
+    return Array.isArray(parsedHistory)
+      ? parsedHistory.filter(
+          (entry): entry is SearchHistoryEntry =>
+            Boolean(
+              entry &&
+                typeof entry.prompt === "string" &&
+                typeof entry.createdAt === "string"
+            )
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [searchHistory] = useState<SearchHistoryEntry[]>(readSearchHistory);
 
   useEffect(() => {
     const supabase = createClient();
@@ -145,15 +177,44 @@ export default function ProfilePage() {
             border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: "20px",
             padding: "24px 28px",
-            opacity: 0.5,
           }}
         >
           <h2 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Zgodovina iskanj
           </h2>
-          <p style={{ margin: 0, fontSize: "14px", color: "rgba(255,255,255,0.4)" }}>
-            Kmalu na voljo...
-          </p>
+          {searchHistory.length === 0 ? (
+            <p style={{ margin: 0, fontSize: "14px", color: "rgba(255,255,255,0.4)" }}>
+              Se ni shranjenih iskanj.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {searchHistory.map((entry, index) => (
+                <div
+                  key={`${entry.createdAt}-${index}`}
+                  style={{
+                    padding: "14px 0",
+                    borderBottom:
+                      index === searchHistory.length - 1
+                        ? "none"
+                        : "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <div style={{ fontSize: "15px", color: "white", marginBottom: "6px" }}>
+                    {entry.prompt}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)" }}>
+                    {new Date(entry.createdAt).toLocaleString("sl-SI", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
