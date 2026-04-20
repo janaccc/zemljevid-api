@@ -1,0 +1,171 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #0b1020;
+  color: white;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr;
+  gap: 16px;
+  padding: 16px;
+  min-height: 100vh;
+}
+
+.left,
+.right {
+  min-height: calc(100vh - 32px);
+}
+
+.panel {
+  background: #121a30;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.searchBox {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.searchBox h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.muted {
+  margin: 0 0 16px;
+  opacity: 0.7;
+}
+
+.searchRow {
+  display: flex;
+  gap: 10px;
+}
+
+.searchRow input {
+  flex: 1;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: none;
+  outline: none;
+  background: #0b1020;
+  color: white;
+}
+
+.searchRow button {
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: #4f7cff;
+  color: white;
+  font-weight: 700;
+}
+
+.results {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+}
+
+.empty {
+  opacity: 0.7;
+  padding: 12px;
+}
+
+.card {
+  text-align: left;
+  background: #0f172a;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(79, 124, 255, 0.7);
+}
+
+.card.selected {
+  border-color: #4f7cff;
+  box-shadow: 0 0 0 1px #4f7cff inset;
+}
+
+.cardTop {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.rank {
+  min-width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #1d4ed8;
+  font-weight: 700;
+}
+
+.name {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.address {
+  opacity: 0.75;
+  font-size: 14px;
+}
+
+.meta {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  opacity: 0.9;
+  font-size: 14px;
+}
+
+.reason {
+  margin-top: 10px;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+@media (max-width: 980px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .left {
+    order: 2;
+    min-height: 55vh;
+  }
+
+  .right {
+    order: 1;
+    min-height: auto;
+  }
+}
