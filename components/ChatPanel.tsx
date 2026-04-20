@@ -3,21 +3,46 @@
 import { useState, useRef, useEffect } from "react";
 import type { Message, Restaurant } from "@/lib/types";
 
+type SearchLocation =
+  | {
+      mode: "default";
+      label: string;
+      radiusKm: number;
+      lat?: number;
+      lng?: number;
+    }
+  | {
+      mode: "auto";
+      label: string;
+      radiusKm: number;
+      lat: number;
+      lng: number;
+    }
+  | {
+      mode: "manual";
+      label: string;
+      radiusKm: number;
+      locationQuery: string;
+      lat?: number;
+      lng?: number;
+    };
+
 type Props = {
   messages: Message[];
   loading: boolean;
   onSearch: (query: string) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  userLocation: { lat: number; lng: number } | null;
+  searchLocation: SearchLocation;
+  onUpdateLocation: (location: SearchLocation) => void;
 };
 
 function priceLabel(value: string | null) {
   if (!value) return "";
-  if (value === "INEXPENSIVE") return "€";
-  if (value === "MODERATE") return "€€";
-  if (value === "EXPENSIVE") return "€€€";
-  if (value === "VERY_EXPENSIVE") return "€€€€";
+  if (value === "INEXPENSIVE") return "EUR";
+  if (value === "MODERATE") return "EUR EUR";
+  if (value === "EXPENSIVE") return "EUR EUR EUR";
+  if (value === "VERY_EXPENSIVE") return "EUR EUR EUR EUR";
   return "";
 }
 
@@ -45,7 +70,7 @@ function RestaurantCard({
         </div>
       </div>
       <div className="meta">
-        {restaurant.rating && <span>⭐ {restaurant.rating}</span>}
+        {restaurant.rating && <span>★ {restaurant.rating}</span>}
         {restaurant.userRatingCount ? (
           <span>{restaurant.userRatingCount} ocen</span>
         ) : null}
@@ -66,14 +91,77 @@ export default function ChatPanel({
   onSearch,
   selectedId,
   onSelect,
-  userLocation,
+  searchLocation,
+  onUpdateLocation,
 }: Props) {
   const [input, setInput] = useState("");
+  const [showLocationSettings, setShowLocationSettings] = useState(false);
+  const [locationInput, setLocationInput] = useState(
+    searchLocation.mode === "manual" ? searchLocation.locationQuery : "Ljubljana"
+  );
+  const [radiusKm, setRadiusKm] = useState(searchLocation.radiusKm);
+  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationError, setLocationError] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    setRadiusKm(searchLocation.radiusKm);
+    setLocationInput(
+      searchLocation.mode === "manual" ? searchLocation.locationQuery : "Ljubljana"
+    );
+    setLocationError("");
+  }, [searchLocation]);
+
+  useEffect(() => {
+    if (!showLocationSettings) {
+      setLocationSuggestions([]);
+      setLoadingSuggestions(false);
+      return;
+    }
+
+    const query = locationInput.trim();
+    if (query.length < 2) {
+      setLocationSuggestions([]);
+      setLoadingSuggestions(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        setLoadingSuggestions(true);
+        const response = await fetch(
+          `/api/location-suggest?q=${encodeURIComponent(query)}`,
+          { signal: controller.signal }
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          setLocationSuggestions([]);
+          return;
+        }
+
+        setLocationSuggestions(
+          Array.isArray(data.suggestions) ? data.suggestions : []
+        );
+      } catch {
+        setLocationSuggestions([]);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [locationInput, showLocationSettings]);
 
   const handleSend = () => {
     const q = input.trim();
@@ -82,12 +170,142 @@ export default function ChatPanel({
     onSearch(q);
   };
 
+  const handleSaveManualLocation = async () => {
+    const value = locationInput.trim();
+    if (!value) return;
+
+    try {
+      setSavingLocation(true);
+      setLocationError("");
+
+      const response = await fetch(
+        `/api/geocode?q=${encodeURIComponent(value)}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLocationError(data.error || "Kraja ni bilo mogoce najti.");
+        return;
+      }
+
+      onUpdateLocation({
+        mode: "manual",
+        label: data.label || value,
+        locationQuery: value,
+        radiusKm,
+        lat: data.lat,
+        lng: data.lng,
+      });
+      setLocationSuggestions([]);
+      setShowLocationSettings(false);
+    } catch {
+      setLocationError("Kraja ni bilo mogoce najti.");
+    } finally {
+      setSavingLocation(false);
+    }
+  };
+
+  const handleUseDefaultLocation = () => {
+    onUpdateLocation({
+      mode: "default",
+      label: "Ljubljana (privzeto)",
+      radiusKm,
+      lat: 46.0569,
+      lng: 14.5058,
+    });
+    setLocationSuggestions([]);
+    setShowLocationSettings(false);
+  };
+
+  const handleUseCurrentLocation = () => {
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        onUpdateLocation({
+          mode: "auto",
+          label: "Tvoja lokacija",
+          radiusKm,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+        setLocationSuggestions([]);
+        setShowLocationSettings(false);
+      },
+      () => {}
+    );
+  };
+
   return (
     <div className="chatPanel">
       <div className="chatHeader">
         <h1>AI Food Finder</h1>
-        <div className="locationBadge">
-          {userLocation ? "📍 Tvoja lokacija" : "📍 Ljubljana (privzeto)"}
+        <div className="locationTools">
+          <button
+            type="button"
+            className="locationBadge locationButton"
+            onClick={() => setShowLocationSettings((open) => !open)}
+          >
+            {searchLocation.label} · {searchLocation.radiusKm} km
+          </button>
+
+          {showLocationSettings && (
+            <div className="locationPopover">
+              <label className="locationField">
+                <span>Kraj</span>
+                <input
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
+                  placeholder="Npr. Ljubljana center"
+                />
+                {locationError && (
+                  <div className="locationError">{locationError}</div>
+                )}
+                {loadingSuggestions && (
+                  <div className="locationHint">Iskanje predlogov...</div>
+                )}
+                {!loadingSuggestions && locationSuggestions.length > 0 && (
+                  <div className="locationSuggestions">
+                    {locationSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        className="locationSuggestion"
+                        onClick={() => {
+                          setLocationInput(suggestion);
+                          setLocationSuggestions([]);
+                        }}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </label>
+
+              <label className="locationField">
+                <span>Radij: {radiusKm} km</span>
+                <input
+                  type="range"
+                  min="5"
+                  max="100"
+                  step="5"
+                  value={radiusKm}
+                  onChange={(e) => setRadiusKm(Number(e.target.value))}
+                />
+              </label>
+
+              <div className="locationActions">
+                <button type="button" onClick={handleSaveManualLocation}>
+                  {savingLocation ? "Shranjujem..." : "Shrani"}
+                </button>
+                <button type="button" onClick={handleUseDefaultLocation}>
+                  Ljubljana
+                </button>
+                <button type="button" onClick={handleUseCurrentLocation}>
+                  Moja lokacija
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -95,7 +313,7 @@ export default function ChatPanel({
         {messages.length === 0 && (
           <div className="chatWelcome">
             <p>Pozdravljeni! Povej mi, kaj bi jedel danes.</p>
-            <p className="muted">Primer: "danes bi jedel pico, ne predrago"</p>
+            <p className="muted">Primer: "pica, po kosih, pod 5 eur, center"</p>
           </div>
         )}
 
@@ -104,10 +322,10 @@ export default function ChatPanel({
             key={msg.id}
             className={`chatBubbleWrapper ${msg.role === "user" ? "userWrapper" : "assistantWrapper"}`}
           >
-            {msg.role === "assistant" && (
-              <div className="avatar">🤖</div>
-            )}
-            <div className={`chatBubble ${msg.role === "user" ? "userBubble" : "assistantBubble"}`}>
+            {msg.role === "assistant" && <div className="avatar">🤖</div>}
+            <div
+              className={`chatBubble ${msg.role === "user" ? "userBubble" : "assistantBubble"}`}
+            >
               <p className="bubbleText">{msg.text}</p>
               {msg.restaurants && msg.restaurants.length > 0 && (
                 <div className="chatResults">
@@ -131,7 +349,9 @@ export default function ChatPanel({
             <div className="avatar">🤖</div>
             <div className="chatBubble assistantBubble">
               <div className="typingDots">
-                <span /><span /><span />
+                <span />
+                <span />
+                <span />
               </div>
             </div>
           </div>
@@ -151,7 +371,7 @@ export default function ChatPanel({
           disabled={loading}
         />
         <button onClick={handleSend} disabled={loading || !input.trim()}>
-          Pošlji
+          Poslji
         </button>
       </div>
     </div>

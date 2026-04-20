@@ -5,17 +5,55 @@ import RestaurantMap from "@/components/RestaurantMap";
 import ChatPanel from "@/components/ChatPanel";
 import type { Restaurant, Message } from "@/lib/types";
 
+type SearchLocation =
+  | {
+      mode: "default";
+      label: string;
+      radiusKm: number;
+      lat?: number;
+      lng?: number;
+    }
+  | {
+      mode: "auto";
+      label: string;
+      radiusKm: number;
+      lat: number;
+      lng: number;
+    }
+  | {
+      mode: "manual";
+      label: string;
+      radiusKm: number;
+      locationQuery: string;
+      lat?: number;
+      lng?: number;
+    };
+
 export default function HomePage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchLocation, setSearchLocation] = useState<SearchLocation>({
+    mode: "default",
+    label: "Ljubljana (privzeto)",
+    radiusKm: 15,
+  });
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
       (pos) =>
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        setSearchLocation((current) =>
+          current.mode === "manual"
+            ? current
+            : {
+                mode: "auto",
+                label: "Tvoja lokacija",
+                radiusKm: current.radiusKm,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+              }
+        ),
       () => {}
     );
   }, []);
@@ -35,8 +73,21 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query,
-          lat: userLocation?.lat,
-          lng: userLocation?.lng,
+          lat:
+            searchLocation.mode === "auto" ||
+            (searchLocation.mode === "manual" && typeof searchLocation.lat === "number")
+              ? searchLocation.lat
+              : undefined,
+          lng:
+            searchLocation.mode === "auto" ||
+            (searchLocation.mode === "manual" && typeof searchLocation.lng === "number")
+              ? searchLocation.lng
+              : undefined,
+          locationQuery:
+            searchLocation.mode === "manual"
+              ? searchLocation.locationQuery
+              : undefined,
+          radiusKm: searchLocation.radiusKm,
         }),
       });
 
@@ -86,6 +137,17 @@ export default function HomePage() {
           restaurants={restaurants}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          mapFocus={
+            typeof searchLocation.lat === "number" &&
+            typeof searchLocation.lng === "number"
+              ? {
+                  lat: searchLocation.lat,
+                  lng: searchLocation.lng,
+                  label: searchLocation.label,
+                  radiusKm: searchLocation.radiusKm,
+                }
+              : null
+          }
         />
       </section>
 
@@ -96,7 +158,8 @@ export default function HomePage() {
           onSearch={handleSearch}
           selectedId={selectedId}
           onSelect={setSelectedId}
-          userLocation={userLocation}
+          searchLocation={searchLocation}
+          onUpdateLocation={setSearchLocation}
         />
       </section>
     </main>

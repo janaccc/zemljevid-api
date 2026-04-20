@@ -13,17 +13,72 @@ type Props = {
   restaurants: Restaurant[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  mapFocus: { lat: number; lng: number; label: string; radiusKm: number } | null;
 };
 
 export default function RestaurantMap({
   restaurants,
   selectedId,
   onSelect,
+  mapFocus,
 }: Props) {
+  const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
   const infoWindowRef = useRef<any>(null);
+  const focusMarkerRef = useRef<any>(null);
+
+  const escapeHtml = (value: string) =>
+    value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  const priceLabel = (value: string | null) => {
+    if (!value) return "";
+    if (value.includes("INEXPENSIVE")) return "EUR";
+    if (value.includes("MODERATE")) return "EUR EUR";
+    if (value.includes("EXPENSIVE")) return "EUR EUR EUR";
+    if (value.includes("VERY_EXPENSIVE")) return "EUR EUR EUR EUR";
+    return "";
+  };
+
+  const buildInfoWindowContent = (restaurant: Restaurant) => {
+    const rating =
+      restaurant.rating !== null ? `${restaurant.rating} zvezdic` : "Ni podatka";
+    const reviewCount = restaurant.userRatingCount
+      ? `${restaurant.userRatingCount} ocen`
+      : "Brez ocen";
+    const price = priceLabel(restaurant.priceLevel);
+
+    return `
+      <div style="max-width:260px;color:#0f172a;font-family:Arial, Helvetica, sans-serif;line-height:1.45;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px;">
+          ${escapeHtml(restaurant.name)}
+        </div>
+        <div style="font-size:13px;color:#475569;margin-bottom:8px;">
+          ${escapeHtml(restaurant.address)}
+        </div>
+        <div style="font-size:13px;margin-bottom:4px;">
+          <strong>Ocena:</strong> ${escapeHtml(rating)}
+        </div>
+        <div style="font-size:13px;margin-bottom:4px;">
+          <strong>Ocene:</strong> ${escapeHtml(reviewCount)}
+        </div>
+        ${
+          price
+            ? `<div style="font-size:13px;margin-bottom:4px;"><strong>Cena:</strong> ${escapeHtml(price)}</div>`
+            : ""
+        }
+        <div style="font-size:13px;">
+          <strong>Zakaj:</strong> ${escapeHtml(restaurant.reason)}
+        </div>
+      </div>
+    `;
+  };
 
   useEffect(() => {
     if (window.google || document.getElementById("google-maps-script")) return;
@@ -49,6 +104,7 @@ export default function RestaurantMap({
       const map = new window.google.maps.Map(mapRef.current, {
         center,
         zoom: 13,
+        ...(mapId ? { mapId } : {}),
       });
 
       mapInstanceRef.current = map;
@@ -71,13 +127,54 @@ export default function RestaurantMap({
     const renderMarkers = async () => {
       if (!window.google || !mapInstanceRef.current) return;
 
-      const { AdvancedMarkerElement, PinElement } =
-        await window.google.maps.importLibrary("marker");
-
       for (const marker of markersRef.current.values()) {
-        marker.map = null;
+        if (typeof marker.setMap === "function") {
+          marker.setMap(null);
+        } else {
+          marker.map = null;
+        }
       }
       markersRef.current.clear();
+
+      const openInfoWindow = (marker: any, restaurant: Restaurant) => {
+        infoWindowRef.current.setContent(buildInfoWindowContent(restaurant));
+
+        infoWindowRef.current.open({
+          anchor: marker,
+          map: mapInstanceRef.current,
+        });
+      };
+
+      if (!mapId) {
+        restaurants.forEach((restaurant, index) => {
+          const isSelected = restaurant.id === selectedId;
+          const marker = new window.google.maps.Marker({
+            map: mapInstanceRef.current,
+            position: { lat: restaurant.lat, lng: restaurant.lng },
+            title: restaurant.name,
+            label: {
+              text: String(index + 1),
+              color: "white",
+              fontWeight: "700",
+            },
+            animation: isSelected
+              ? window.google.maps.Animation.BOUNCE
+              : undefined,
+          });
+
+          marker.addListener("click", () => {
+            onSelect(restaurant.id);
+            openInfoWindow(marker, restaurant);
+          });
+
+          markersRef.current.set(restaurant.id, marker);
+        });
+
+        return;
+      }
+
+      const { AdvancedMarkerElement, PinElement } =
+        await window.google.maps.importLibrary("marker");
 
       restaurants.forEach((restaurant, index) => {
         const isSelected = restaurant.id === selectedId;
@@ -96,19 +193,7 @@ export default function RestaurantMap({
 
         marker.addListener("click", () => {
           onSelect(restaurant.id);
-
-          infoWindowRef.current.setContent(`
-            <div style="max-width:240px">
-              <strong>${restaurant.name}</strong><br />
-              <div>${restaurant.address}</div>
-              <div>Ocena: ${restaurant.rating ?? "Ni podatka"}</div>
-            </div>
-          `);
-
-          infoWindowRef.current.open({
-            anchor: marker,
-            map: mapInstanceRef.current,
-          });
+          openInfoWindow(marker, restaurant);
         });
 
         markersRef.current.set(restaurant.id, marker);
@@ -117,6 +202,26 @@ export default function RestaurantMap({
 
     renderMarkers();
   }, [restaurants, selectedId, onSelect]);
+
+  useEffect(() => {
+    if (!mapFocus || !mapInstanceRef.current || !window.google) return;
+    if (selectedId) return;
+
+    mapInstanceRef.current.panTo({ lat: mapFocus.lat, lng: mapFocus.lng });
+
+    const zoom =
+      mapFocus.radiusKm <= 8
+        ? 13
+        : mapFocus.radiusKm <= 15
+          ? 12
+          : mapFocus.radiusKm <= 30
+            ? 11
+            : mapFocus.radiusKm <= 60
+              ? 10
+              : 9;
+
+    mapInstanceRef.current.setZoom(zoom);
+  }, [mapFocus, selectedId]);
 
   useEffect(() => {
     if (!selectedId || !mapInstanceRef.current || !window.google) return;
@@ -129,19 +234,29 @@ export default function RestaurantMap({
 
     const marker = markersRef.current.get(selectedId);
     if (marker && infoWindowRef.current) {
-      infoWindowRef.current.setContent(`
-        <div style="max-width:240px">
-          <strong>${restaurant.name}</strong><br />
-          <div>${restaurant.address}</div>
-          <div>Ocena: ${restaurant.rating ?? "Ni podatka"}</div>
-          <div>Zakaj: ${restaurant.reason}</div>
-        </div>
-      `);
+      if (focusMarkerRef.current) {
+        focusMarkerRef.current.setMap(null);
+      }
+
+      focusMarkerRef.current = new window.google.maps.Marker({
+        map: mapInstanceRef.current,
+        position: { lat: restaurant.lat, lng: restaurant.lng },
+        title: restaurant.name,
+        animation: window.google.maps.Animation.DROP,
+        zIndex: 999,
+      });
+
+      infoWindowRef.current.setContent(buildInfoWindowContent(restaurant));
 
       infoWindowRef.current.open({
-        anchor: marker,
+        anchor: focusMarkerRef.current,
         map: mapInstanceRef.current,
       });
+
+      if (typeof marker.setAnimation === "function") {
+        marker.setAnimation(window.google.maps.Animation.BOUNCE);
+        window.setTimeout(() => marker.setAnimation(null), 700);
+      }
     }
   }, [selectedId, restaurants]);
 
