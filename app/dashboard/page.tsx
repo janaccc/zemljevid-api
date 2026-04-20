@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 
 import type { Restaurant, Message } from "@/lib/types";
 
+const SEARCH_HISTORY_KEY = "search-history";
+
 type SearchLocation =
   | {
       mode: "default";
@@ -114,6 +116,23 @@ export default function DashboardPage() {
         ]);
         return;
       }
+
+      const historyEntry = {
+        prompt: query,
+        createdAt: new Date().toISOString(),
+      };
+
+      try {
+        const existingHistory = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+        const parsedHistory = existingHistory ? JSON.parse(existingHistory) : [];
+        const nextHistory = Array.isArray(parsedHistory)
+          ? [historyEntry, ...parsedHistory].slice(0, 100)
+          : [historyEntry];
+        window.localStorage.setItem(
+          SEARCH_HISTORY_KEY,
+          JSON.stringify(nextHistory)
+        );
+      } catch {}
 
       setMessages((prev) => [
         ...prev,
