@@ -39,10 +39,11 @@ type Props = {
 
 function priceLabel(value: string | null) {
   if (!value) return "";
-  if (value === "INEXPENSIVE") return "EUR";
-  if (value === "MODERATE") return "EUR EUR";
-  if (value === "EXPENSIVE") return "EUR EUR EUR";
-  if (value === "VERY_EXPENSIVE") return "EUR EUR EUR EUR";
+  if (value.includes("INEXPENSIVE")) return "€ 5-10 €";
+  if (value.includes("MODERATE")) return "€€ 10-25 €";
+  if (value.includes("EXPENSIVE") || value.includes("VERY_EXPENSIVE")) {
+    return "€€€ 25+ €";
+  }
   return "";
 }
 
@@ -236,6 +237,15 @@ export default function ChatPanel({
 
   return (
     <div className="chatPanel">
+      <div className="chatActionRow top">
+        <button type="button" className="chatActionBtn" onClick={() => {}}>
+          Moj profil
+        </button>
+        <button type="button" className="chatActionBtn danger" onClick={() => {}}>
+          Odjava
+        </button>
+      </div>
+
       <div className="chatHeader">
         <h1>AI Food Finder</h1>
         <div className="locationTools">
@@ -308,6 +318,8 @@ export default function ChatPanel({
           )}
         </div>
       </div>
+
+      <div className="chatSpacer" />
 
       <div className="chatMessages">
         {messages.length === 0 && (

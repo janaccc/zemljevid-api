@@ -187,6 +187,11 @@ input {
   font-size: 22px;
 }
 
+.chatSpacer {
+  height: 8px;
+  flex-shrink: 0;
+}
+
 .locationBadge {
   font-size: 13px;
   opacity: 0.65;
@@ -416,6 +421,42 @@ input {
 }
 
 /* Chat input */
+.chatActionRow {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.chatActionRow.top {
+  border-top: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chatActionBtn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.chatActionBtn:hover {
+  border-color: rgba(79, 124, 255, 0.7);
+}
+
+.chatActionBtn.danger {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.chatActionBtn.danger:hover {
+  border-color: rgba(239, 68, 68, 0.65);
+}
+
 .chatInputRow {
   display: flex;
   gap: 10px;

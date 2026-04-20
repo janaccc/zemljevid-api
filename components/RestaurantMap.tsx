@@ -39,10 +39,11 @@ export default function RestaurantMap({
 
   const priceLabel = (value: string | null) => {
     if (!value) return "";
-    if (value.includes("INEXPENSIVE")) return "EUR";
-    if (value.includes("MODERATE")) return "EUR EUR";
-    if (value.includes("EXPENSIVE")) return "EUR EUR EUR";
-    if (value.includes("VERY_EXPENSIVE")) return "EUR EUR EUR EUR";
+    if (value.includes("INEXPENSIVE")) return "€ 5-10 €";
+    if (value.includes("MODERATE")) return "€€ 10-25 €";
+    if (value.includes("EXPENSIVE") || value.includes("VERY_EXPENSIVE")) {
+      return "€€€ 25+ €";
+    }
     return "";
   };
 
