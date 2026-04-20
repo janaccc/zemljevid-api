@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import type { ParsedIntent, Restaurant } from "@/lib/types";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -12,8 +10,6 @@ function clamp(value: number, min: number, max: number) {
 
 function normalizePriceLevel(level?: string | null) {
   if (!level) return null;
-
-  // Places API (New) običajno vrača FREE, INEXPENSIVE, MODERATE, EXPENSIVE, VERY_EXPENSIVE
   switch (level) {
     case "INEXPENSIVE":
       return "cheap";
@@ -111,52 +107,79 @@ function scoreRestaurant(place: any, intent: ParsedIntent): Restaurant {
 }
 
 async function parseIntent(query: string): Promise<ParsedIntent> {
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.2,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          "Iz uporabnikovega opisa hrane vrni JSON z lastnostmi: food, vibe, price, area, city, openNow. Price naj bo samo cheap, moderate ali expensive.",
-      },
-      {
-        role: "user",
-        content: query,
-      },
-    ],
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-preview-05-20",
+    contents: `Iz uporabnikovega opisa hrane vrni SAMO JSON z lastnostmi: food, vibe, price, area, city, openNow. Price naj bo samo cheap, moderate ali expensive. Ne dodajaj razlage, samo JSON.\n\nPoizvedba: ${query}`,
   });
 
-  const content = completion.choices[0]?.message?.content ?? "{}";
+  const content = response.text ?? "{}";
 
   try {
-    return JSON.parse(content);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : {};
   } catch {
     return {};
   }
+}
+
+function buildAiMessage(intent: ParsedIntent, count: number, usingLocation: boolean): string {
+  const food = intent.food || "restavracije";
+  const area = intent.area ? ` v ${intent.area}` : "";
+  const city = intent.city ? ` (${intent.city})` : "";
+  const locationNote = usingLocation ? " blizu tebe" : `${area}${city}`;
+
+  if (count === 0) {
+    return `Žal nisem našel nobene restavracije za "${food}"${locationNote}. Poskusi z drugačnim iskanjem.`;
+  }
+
+  const priceNote =
+    intent.price === "cheap"
+      ? " po dostopnih cenah"
+      : intent.price === "expensive"
+      ? " v višjem cenovnem razredu"
+      : "";
+
+  return `Našel sem ${count} restavracij za "${food}"${locationNote}${priceNote}. Tu so najboljše:`;
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const query = String(body?.query ?? "").trim();
+    const userLat = typeof body?.lat === "number" ? body.lat : null;
+    const userLng = typeof body?.lng === "number" ? body.lng : null;
+    const usingLocation = userLat !== null && userLng !== null;
 
     if (!query) {
-      return NextResponse.json(
-        { error: "Manjka query." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Manjka query." }, { status: 400 });
     }
 
     const intent = await parseIntent(query);
 
-    const city = intent.city || "Ljubljana";
+    const city = intent.city || (usingLocation ? "" : "Ljubljana");
     const area = intent.area ? ` ${intent.area}` : "";
     const food = intent.food || "restaurant";
     const openNowText = intent.openNow ? " open now" : "";
 
-    const textQuery = `${food}${area} ${city}${openNowText}`.trim();
+    const textQuery = usingLocation
+      ? `${food}${openNowText}`.trim()
+      : `${food}${area} ${city}${openNowText}`.trim();
+
+    const googleBody: any = {
+      textQuery,
+      maxResultCount: 12,
+      languageCode: "sl",
+      regionCode: "SI",
+    };
+
+    if (usingLocation) {
+      googleBody.locationBias = {
+        circle: {
+          center: { latitude: userLat, longitude: userLng },
+          radius: 5000,
+        },
+      };
+    }
 
     const googleRes = await fetch(
       "https://places.googleapis.com/v1/places:searchText",
@@ -168,12 +191,7 @@ export async function POST(req: Request) {
           "X-Goog-FieldMask":
             "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.googleMapsUri,places.websiteUri,places.businessStatus,places.primaryType,places.editorialSummary",
         },
-        body: JSON.stringify({
-          textQuery,
-          maxResultCount: 12,
-          languageCode: "sl",
-          regionCode: "SI",
-        }),
+        body: JSON.stringify(googleBody),
       }
     );
 
@@ -192,11 +210,14 @@ export async function POST(req: Request) {
       .map((place: any) => scoreRestaurant(place, intent))
       .sort((a: Restaurant, b: Restaurant) => b.score - a.score);
 
+    const aiMessage = buildAiMessage(intent, ranked.length, usingLocation);
+
     return NextResponse.json({
       query,
       intent,
       restaurants: ranked,
       selectedId: ranked[0]?.id ?? null,
+      aiMessage,
     });
   } catch (error: any) {
     return NextResponse.json(

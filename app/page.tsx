@@ -1,41 +1,79 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import RestaurantMap from "@/components/RestaurantMap";
-import SearchPanel from "@/components/SearchPanel";
-import type { Restaurant } from "@/lib/types";
+import ChatPanel from "@/components/ChatPanel";
+import type { Restaurant, Message } from "@/lib/types";
 
 export default function HomePage() {
-  const [query, setQuery] = useState("pizza, poceni, Ljubljana center");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  const handleSearch = async () => {
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      (pos) =>
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {}
+    );
+  }, []);
+
+  const handleSearch = async (query: string) => {
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      text: query,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setLoading(true);
+
     try {
-      setLoading(true);
-
       const res = await fetch("/api/search", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          lat: userLocation?.lat,
+          lng: userLocation?.lng,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        console.error(data);
-        alert(data.error || "Napaka pri iskanju.");
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            text: data.error || "Napaka pri iskanju.",
+          },
+        ]);
         return;
       }
 
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          text: data.aiMessage,
+          restaurants: data.restaurants,
+        },
+      ]);
       setRestaurants(data.restaurants || []);
       setSelectedId(data.selectedId || null);
-    } catch (error) {
-      console.error(error);
-      alert("Napaka pri iskanju.");
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          text: "Napaka pri iskanju. Poskusi znova.",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -52,14 +90,13 @@ export default function HomePage() {
       </section>
 
       <section className="right">
-        <SearchPanel
-          query={query}
-          setQuery={setQuery}
-          onSearch={handleSearch}
+        <ChatPanel
+          messages={messages}
           loading={loading}
-          restaurants={restaurants}
+          onSearch={handleSearch}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          userLocation={userLocation}
         />
       </section>
     </main>
