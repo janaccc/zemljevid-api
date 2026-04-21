@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { isAdminEmail } from "@/lib/admin";
 
 const SEARCH_HISTORY_KEY = "search-history";
 
@@ -61,7 +62,7 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const isAdmin = user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const isAdmin = isAdminEmail(user.email);
   const joined = new Date(user.created_at).toLocaleDateString("sl-SI", {
     day: "numeric",
     month: "long",

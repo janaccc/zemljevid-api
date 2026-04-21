@@ -20,9 +20,18 @@ Odpri `http://localhost:3000`.
 
 ## Okoljske spremenljivke
 
-Ustvari `.env.local`:
+Ustvari `.env.local` (glej tudi `.env.example`):
 
 ```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...   # nujno za /admin API rute
+
+# Admin (za prikaz gumba + dostop do /admin)
+NEXT_PUBLIC_ADMIN_EMAIL=admin@scv.si
+ADMIN_EMAIL=admin@scv.si
+
 # Server-side (API rute)
 GOOGLE_MAPS_API_KEY=...
 GEMINI_API_KEY=...               # opcijsko

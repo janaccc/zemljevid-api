@@ -1,11 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { isAdminEmail } from "@/lib/admin";
 
 async function isAdmin(): Promise<boolean> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  return user?.email === process.env.ADMIN_EMAIL;
+  return isAdminEmail(user?.email);
 }
 
 export async function GET() {
@@ -13,7 +14,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const admin = createAdminClient();
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Server misconfigured";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
   const now = new Date();
 
   const todayStart = new Date(now);

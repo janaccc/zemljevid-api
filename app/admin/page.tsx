@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
+import { isAdminEmail } from "@/lib/admin";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -170,7 +171,7 @@ export default function AdminPage() {
                             </div>
                             <div>
                               <div style={{ fontSize: "14px", fontWeight: 500 }}>{user.email}</div>
-                              {user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && (
+                              {isAdminEmail(user.email) && (
                                 <div style={{ fontSize: "11px", color: "#4f7cff" }}>Admin</div>
                               )}
                             </div>

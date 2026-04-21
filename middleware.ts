@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdminEmail } from "@/lib/admin";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -35,7 +36,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  if (pathname.startsWith("/admin") && user?.email !== process.env.ADMIN_EMAIL) {
+  if (pathname.startsWith("/admin") && !isAdminEmail(user?.email)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

@@ -1,15 +1,29 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
+import { getAdminEmails } from "@/lib/admin";
 
 export async function GET() {
-  const email = process.env.ADMIN_EMAIL;
-  const password = "123123123";
-
-  if (!email) {
-    return NextResponse.json({ error: "ADMIN_EMAIL not set" }, { status: 500 });
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const admin = createAdminClient();
+  const email = getAdminEmails()[0];
+  const password = process.env.ADMIN_SETUP_PASSWORD ?? "123123123";
+
+  if (!email) {
+    return NextResponse.json(
+      { error: "Admin email not configured (ADMIN_EMAIL / NEXT_PUBLIC_ADMIN_EMAIL)" },
+      { status: 500 }
+    );
+  }
+
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Server misconfigured";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   const { data: existing } = await admin.auth.admin.listUsers({ perPage: 1000 });
   const alreadyExists = existing?.users?.some((u) => u.email === email);
