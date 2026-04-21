@@ -1,4 +1,4 @@
-const DEFAULT_DEV_ADMIN_EMAILS = ["admin@scv.si"];
+const DEFAULT_FALLBACK_ADMIN_EMAILS = ["admin@scv.si"];
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -23,11 +23,7 @@ export function getAdminEmails(): string[] {
     return parseEmailList(configured);
   }
 
-  if (process.env.NODE_ENV === "development") {
-    return DEFAULT_DEV_ADMIN_EMAILS.map(normalizeEmail);
-  }
-
-  return [];
+  return DEFAULT_FALLBACK_ADMIN_EMAILS.map(normalizeEmail);
 }
 
 export function isAdminEmail(email?: string | null): boolean {
@@ -35,4 +31,3 @@ export function isAdminEmail(email?: string | null): boolean {
   const normalized = normalizeEmail(email);
   return getAdminEmails().includes(normalized);
 }
-
