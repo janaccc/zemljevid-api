@@ -18,19 +18,58 @@ export default function AdminPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/users")
-      .then((r) => {
-        if (r.status === 403) { router.push("/dashboard"); return null; }
+    let cancelled = false;
+
+    setError("");
+    setLoading(true);
+
+    (async () => {
+      try {
+        const r = await fetch("/api/admin/users");
+
+        if (r.status === 403) {
+          router.push("/dashboard");
+          return;
+        }
+
+        const data = await r.json().catch(() => null);
+
+        if (!r.ok) {
+          if (!cancelled) {
+            setError(data?.error ?? "Napaka pri nalaganju uporabnikov.");
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setUsers(data?.users ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setError("Napaka pri nalaganju uporabnikov.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    fetch("/api/admin/stats")
+      .then(async (r) => {
+        if (!r.ok) return null;
         return r.json();
       })
       .then((data) => {
-        if (data) setUsers(data.users ?? []);
+        if (!cancelled && data) setSearchStats(data);
       })
-      .finally(() => setLoading(false));
+      .catch(() => {
+        // stats are optional
+      });
 
-    fetch("/api/admin/stats")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setSearchStats(data); });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const handleDelete = async (id: string, email: string) => {
