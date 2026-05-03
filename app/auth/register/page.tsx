@@ -35,6 +35,13 @@ export default function RegisterPage() {
       return;
     }
 
+    // Send welcome email (fire-and-forget, non-blocking)
+    fetch("/api/auth/welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).catch(() => {});
+
     setSuccess(true);
     setLoading(false);
   };
