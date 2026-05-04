@@ -121,7 +121,7 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
           <button onClick={onClose} style={iconBtn}>✕</button>
         </div>
         <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", margin: "0 0 16px" }}>
-          Naloži .csv ali .xlsx datoteko z email naslovi (en stolpec, opcijska glava &ldquo;email&rdquo;).
+          Naloži .csv ali .xlsx datoteko: stolpec A = email, stolpec B = geslo (opcijsko). Glava je lahko &ldquo;email&rdquo; / &ldquo;password&rdquo;.
         </p>
         <div
           onClick={() => fileRef.current?.click()}
